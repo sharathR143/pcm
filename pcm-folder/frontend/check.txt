@@ -1,0 +1,110 @@
+const fs = require('fs');
+
+const http2 = require('http2');
+
+const express = require('express');
+
+const { Server } = require('socket.io');
+ 
+const app = express();
+ 
+const server = http2.createSecureServer({
+
+  key: fs.readFileSync('key.pem'),
+
+  cert: fs.readFileSync('cert.pem'),
+
+  allowHTTP1: true // fallback to HTTP/1.1 for unsupported clients
+
+}, app);
+ 
+const io = new Server(server); // Socket.IO over HTTP/2
+ 
+server.listen(8443, () => {
+
+  console.log('Socket.IO over HTTP/2 on https://localhost:8443');
+
+});
+
+ 
+####################################################
+ 
+✅ Step-by-Step Setup: Socket.IO over HTTP/2 with TLS
+📁 Project Structure
+vbnetCopyEdityour-project/
+├── cert/
+│   ├── key.pem
+│   └── cert.pem
+├── server.js
+└── client.js
+🔐 Step 1: Generate Self-Signed Certificate
+Use OpenSSL:
+bashCopyEditmkdir cert
+openssl req -x509 -newkey rsa:2048 -nodes \
+  -keyout cert/key.pem -out cert/cert.pem -days 365 \
+  -subj "/CN=localhost" 
+🚀 Step 2: Create the HTTP/2 + Socket.IO Server
+server.js
+jsCopyEditconst fs = require('fs');const http2 = require('http2');const express = require('express');const { Server } = require('socket.io');const path = require('path');const app = express();
+// HTTP/2 Secure Server with fallback to HTTP/1.1 const server = http2.createSecureServer({
+  key: fs.readFileSync(path.join(__dirname, 'cert/key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, 'cert/cert.pem')),
+  allowHTTP1: true, // fallback for unsupported clients}, app);
+// Socket.IO server const io = new Server(server);
+// Test endpoint (optional)app.get('/', (req, res) => {
+  res.send('Socket.IO HTTP/2 server is running!');
+});
+// Handle Socket.IO connectionio.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+  socket.on('ping', () => {
+    console.log('Received ping');
+    socket.emit('pong', { message: 'Pong from HTTP/2 server' });
+  });
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+// Start serverserver.listen(8443, () => {
+  console.log('✅ Server running at https://localhost:8443');
+});
+🧪 Step 3: Create a Client (Node.js)
+client.js
+jsCopyEditconst io = require('socket.io-client');const fs = require('fs');
+// Self-signed certificate - ignore TLS warningprocess.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+const socket = io('https://localhost:8443', {
+  transports: ['websocket'],
+  secure: true,
+});
+socket.on('connect', () => {
+  console.log('Connected to HTTP/2 server');
+  socket.emit('ping');
+});
+socket.on('pong', (data) => {
+  console.log('Received from server:', data);
+  socket.close();
+});
+socket.on('connect_error', (err) => {
+  console.error('Connection error:', err.message);
+});
+✅ Test It
+Start the server:
+bashCopyEditnode server.js
+In another terminal, run the client:
+bashCopyEditnode client.js
+✅ You should see:
+cssCopyEditConnected to HTTP/2 server
+Received from server: { message: 'Pong from HTTP/2 server' }
+⚠️ Note (Browser Testing)
+If you access the server from a browser, you must:
+Use https://localhost:8443
+Accept the self-signed certificate manually
+Use a modern browser that supports HTTP/2 + WebSocket
+✅ Summary
+Feature	Status
+HTTP/2 with Socket.IO	✅
+TLS (HTTPS)	✅
+Self-signed cert support	✅
+HTTP/1.1 fallback	✅ (via allowHTTP1: true)
+Node.js client supported	✅
+ 
+ 
